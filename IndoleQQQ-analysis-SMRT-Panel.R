@@ -13,12 +13,12 @@ name_plate_sample = "SMRT005C01_P2_plate_map.csv" # Data plate layout
 exp_code = "SMRT005C01"
 plate_number = 2
 experimental_date = "20260831" #Date experiment was run on LCMS
-VIAL = TRUE
+VIAL = FALSE
 
 # dilutions
 CPDil = 1 # calibration plate dilution
 SPDil = 1 # sample plate dilution
-
+powder = FALSE #was this material initially solid
 # Do not edit below
 ################################################################################
 # Part 0 - Libraries and parameters
@@ -75,7 +75,7 @@ names(DataQQQ) <- c("Sample","DataFile","SampleType","Level", "day-time", "well_
                     "ILA.area", "ILA.conc","ILA.ret","ILA.SN","ILA.IAAd7",
                     "IAld.area", "IAld.conc","IAld.ret","IAld.SN","IAld.IAAd7",
                     "IAcr.area", "IAcr.conc","IAcr.ret","IAcr.SN","IAcr.IAAd7",
-                    "IPA.area", "IPA.conc","IPA.ret","IPA.SN","IPA.IAAd7",
+                    "IPA.area", "IPA.conc","IPA.ret","IPA.SN","IPA.IAAd7"
                     )
 
 # reformat the data
@@ -545,73 +545,76 @@ write.csv(DATAEYE_sum, paste0(folder, exp_code,"-summary-P",plate_number, ".csv"
 ################################################################################
 # Part 5 - Further Data processing for powder or solid samples
 ################################################################################
-### Calculate weight
-DataQQQsub$Trp.g<-(DataQQQsub$Trp.conc)*(1/DataQQQsub$concentration.mg.mg)
-DataQQQsub$IAcr.g<-(DataQQQsub$IAcr.conc)*(1/DataQQQsub$concentration.mg.mg)
-DataQQQsub$ILA.g<-(DataQQQsub$ILA.conc)*(1/DataQQQsub$concentration.mg.mg)
-DataQQQsub$IAld.g<-(DataQQQsub$IAld.conc)*(1/DataQQQsub$concentration.mg.mg)
-DataQQQsub$IPA.g<-(DataQQQsub$IPA.conc)*(1/DataQQQsub$concentration.mg.mg)
-
-p1 <- ggplot(DataQQQsub, aes(group, IPA.g)) +geom_boxplot()+
-  #stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = .25,colour = "gray") +
-  #stat_summary(fun = mean, geom = "errorbar", aes(ymin = ..y.., ymax = ..y..), size = 1.2, width = .6, colour = "gray") +
-  geom_jitter(aes(colour = InternalQC), width = .35, height = 0, size = 2, alpha = .9) +
-  scale_colour_manual(values = c("fail" = "red", "pass" = "black"), guide  = "none") +
-  #geom_hline(yintercept = ILA_max, linetype = "dotted") +
-  labs(y = "IPA titer [mg/g]", x = "Group", title = "IPA titers for all groups")
-p1 <- makeStdGraph(p1)
-
-##— Plot with colours driven by InternalQC (red = fail, black = pass) —##
-p2 <- ggplot(DataQQQsub, aes(group, IAcr.g)) +geom_boxplot()+
-  #stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = .25,colour = "gray") +
-  #stat_summary(fun = mean, geom = "errorbar", aes(ymin = ..y.., ymax = ..y..), size = 1.2, width = .6, colour = "gray") +
-  geom_jitter(aes(colour = InternalQC), width = .35, height = 0, size = 2, alpha = .9) +
-  scale_colour_manual(values = c("fail" = "red", "pass" = "black"), guide  = "none") +
-  #geom_hline(yintercept = IAld_max, linetype = "dotted") +
-  labs( y = "Indole Acrylic Acid titer[mg/g]", x = "Group", title = "Indole Acrylic Acid titers for all groups")
-p2 <- makeStdGraph(p2)
-
-figure <- ggarrange(p1 ,p2, ncol = 2, nrow = 1) + bgcolor("White")
-graph_id <- paste0("Titers of all main compounds per group")
-figure <- annotate_figure(figure, top = text_grob(graph_id, 
-                                                  color = "black", face = "bold", size = 14))
-
-save_name <- paste0(folder, "9b-IndoleQQQ.png")
-
-ggsave(plot = figure, width = 14, height = 8, dpi = 400, filename = save_name)
-rm(p1,p2)
-write.csv(DataQQQsub, paste0(folder, exp_code,"-processed-weight-P",plate_number, ".csv"))
-
-DataQQQsub <- group_by(DataQQQsub, group)
-DATAEYE_sum <- summarise(DataQQQsub,
-                         meanIPA_g = mean(IPA.g), sdIPA_g= sd(IPA.g),
-                         meanIAcr_g = mean(IAcr.g), sdSkatole_g= sd(IAcr.g))
-DATAEYE_sum <-unique(DATAEYE_sum)
-
-DATAEYE_sum <- as.data.frame(lapply(DATAEYE_sum, function(x) {
-  if(is.numeric(x)) round(x, 8) else x
-}))
-
-DATAEYE_sum_corr <- summarise(DataQQQsub[DataQQQsub$InternalQC == "pass",],
-                              meanIPA_QC = mean(IPA.g), sdIPA_QC = sd(IPA.g),
-                              meanIAcr_QC = mean(IAcr.g), sdIAcr_QC = sd(IAcr.g))
-DATAEYE_sum_corr <-unique(DATAEYE_sum_corr)
-
-DATAEYE_sum_corr <- as.data.frame(lapply(DATAEYE_sum_corr, function(x) {
-  if(is.numeric(x)) round(x, 8) else x
-}))
-
-DATAEYE_sum <- merge(DATAEYE_sum, DATAEYE_sum_corr, by = "group", all = TRUE)
-
-# Specify the width and height
-fixed_width <- 15  # Adjust the width as needed
-fixed_height <- nrow(DATAEYE_sum) * 0.35  # Adjust the height based on the number of rows
-
-# Save the dataframe as a PNG image
-savename <- paste0(folder, exp_code,"_summary_gg-P",plate_number, ".png")
-png(savename, width = fixed_width, height = fixed_height, units = "in", res = 450)
-grid.table(DATAEYE_sum)
-dev.off()
-
-write.csv(DATAEYE_sum, paste0(folder, exp_code,"-summary_gg-P",plate_number, ".csv"))
+if(powder){
+  ### Calculate weight
+  DataQQQsub$Trp.g<-(DataQQQsub$Trp.conc)*(1/DataQQQsub$concentration.mg.mg)
+  DataQQQsub$IAcr.g<-(DataQQQsub$IAcr.conc)*(1/DataQQQsub$concentration.mg.mg)
+  DataQQQsub$ILA.g<-(DataQQQsub$ILA.conc)*(1/DataQQQsub$concentration.mg.mg)
+  DataQQQsub$IAld.g<-(DataQQQsub$IAld.conc)*(1/DataQQQsub$concentration.mg.mg)
+  DataQQQsub$IPA.g<-(DataQQQsub$IPA.conc)*(1/DataQQQsub$concentration.mg.mg)
+  
+  p1 <- ggplot(DataQQQsub, aes(group, IPA.g)) +geom_boxplot()+
+    #stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = .25,colour = "gray") +
+    #stat_summary(fun = mean, geom = "errorbar", aes(ymin = ..y.., ymax = ..y..), size = 1.2, width = .6, colour = "gray") +
+    geom_jitter(aes(colour = InternalQC), width = .35, height = 0, size = 2, alpha = .9) +
+    scale_colour_manual(values = c("fail" = "red", "pass" = "black"), guide  = "none") +
+    #geom_hline(yintercept = ILA_max, linetype = "dotted") +
+    labs(y = "IPA titer [mg/g]", x = "Group", title = "IPA titers for all groups")
+  p1 <- makeStdGraph(p1)
+  
+  ##— Plot with colours driven by InternalQC (red = fail, black = pass) —##
+  p2 <- ggplot(DataQQQsub, aes(group, IAcr.g)) +geom_boxplot()+
+    #stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = .25,colour = "gray") +
+    #stat_summary(fun = mean, geom = "errorbar", aes(ymin = ..y.., ymax = ..y..), size = 1.2, width = .6, colour = "gray") +
+    geom_jitter(aes(colour = InternalQC), width = .35, height = 0, size = 2, alpha = .9) +
+    scale_colour_manual(values = c("fail" = "red", "pass" = "black"), guide  = "none") +
+    #geom_hline(yintercept = IAld_max, linetype = "dotted") +
+    labs( y = "Indole Acrylic Acid titer[mg/g]", x = "Group", title = "Indole Acrylic Acid titers for all groups")
+  p2 <- makeStdGraph(p2)
+  
+  figure <- ggarrange(p1 ,p2, ncol = 2, nrow = 1) + bgcolor("White")
+  graph_id <- paste0("Titers of all main compounds per group")
+  figure <- annotate_figure(figure, top = text_grob(graph_id, 
+                                                    color = "black", face = "bold", size = 14))
+  
+  save_name <- paste0(folder, "9b-IndoleQQQ.png")
+  
+  ggsave(plot = figure, width = 14, height = 8, dpi = 400, filename = save_name)
+  rm(p1,p2)
+  write.csv(DataQQQsub, paste0(folder, exp_code,"-processed-weight-P",plate_number, ".csv"))
+  
+  DataQQQsub <- group_by(DataQQQsub, group)
+  DATAEYE_sum <- summarise(DataQQQsub,
+                           meanIPA_g = mean(IPA.g), sdIPA_g= sd(IPA.g),
+                           meanIAcr_g = mean(IAcr.g), sdSkatole_g= sd(IAcr.g))
+  DATAEYE_sum <-unique(DATAEYE_sum)
+  
+  DATAEYE_sum <- as.data.frame(lapply(DATAEYE_sum, function(x) {
+    if(is.numeric(x)) round(x, 8) else x
+  }))
+  
+  DATAEYE_sum_corr <- summarise(DataQQQsub[DataQQQsub$InternalQC == "pass",],
+                                meanIPA_QC = mean(IPA.g), sdIPA_QC = sd(IPA.g),
+                                meanIAcr_QC = mean(IAcr.g), sdIAcr_QC = sd(IAcr.g))
+  DATAEYE_sum_corr <-unique(DATAEYE_sum_corr)
+  
+  DATAEYE_sum_corr <- as.data.frame(lapply(DATAEYE_sum_corr, function(x) {
+    if(is.numeric(x)) round(x, 8) else x
+  }))
+  
+  DATAEYE_sum <- merge(DATAEYE_sum, DATAEYE_sum_corr, by = "group", all = TRUE)
+  
+  # Specify the width and height
+  fixed_width <- 15  # Adjust the width as needed
+  fixed_height <- nrow(DATAEYE_sum) * 0.35  # Adjust the height based on the number of rows
+  
+  # Save the dataframe as a PNG image
+  savename <- paste0(folder, exp_code,"_summary_gg-P",plate_number, ".png")
+  png(savename, width = fixed_width, height = fixed_height, units = "in", res = 450)
+  grid.table(DATAEYE_sum)
+  dev.off()
+  
+  write.csv(DATAEYE_sum, paste0(folder, exp_code,"-summary_gg-P",plate_number, ".csv"))
+  
+}
 
