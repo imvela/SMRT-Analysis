@@ -586,7 +586,7 @@ if(powder){
   DataQQQsub <- group_by(DataQQQsub, group)
   DATAEYE_sum <- summarise(DataQQQsub,
                            meanIPA_g = mean(IPA.g), sdIPA_g= sd(IPA.g),
-                           meanIAcr_g = mean(IAcr.g), sdSkatole_g= sd(IAcr.g))
+                           meanIAcr_g = mean(IAcr.g), sdIAcr_g= sd(IAcr.g))
   DATAEYE_sum <-unique(DATAEYE_sum)
   
   DATAEYE_sum <- as.data.frame(lapply(DATAEYE_sum, function(x) {
