@@ -105,7 +105,7 @@ test$volume<-100
 random_file<-test[test$column==30,]
 random_file<-random_file[,c("target_plate","source_plate","well_96","well")]
 colnames(random_file)<-c("target_plate","source_plate","target_well","source_well")
-
+name_plate<-test$plate_id[1]
 set.seed(seed) # Set the seed for the randomization
 for (c in 1:num_plates) {
   # Set the seed for so that randomization can be repeated within an experiment 
@@ -118,8 +118,8 @@ for (c in 1:num_plates) {
   temp$target_plate<-paste0("BPO_plate_",c)
   write.csv(temp,paste(plate_map_dir,expCode,"_plate_map_AssayFormat_P",c,".csv",sep = ""))
   temp_sheet <- temp
-  temp_sheet$plate_id<-paste0(expCode,"_plate_map_AssayFormat_P",c)
-  push_to_sheet(temp_sheet, link, paste0(expCode,"_plate_map_AssayFormat_P",c), FALSE)
+  temp_sheet$plate_id<-paste0(name_plate,"_plate_map_AssayFormat_P",c)
+  push_to_sheet(temp_sheet, link, paste0(name_plate,"_plate_map_AssayFormat_P",c), FALSE)
   
   temp<-temp[temp$sample_id!="",]
   #Re-label
